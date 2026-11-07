@@ -31,7 +31,9 @@ npm run build      # tsc + vite build + service worker
 4. **Crear tu usuario.** *Authentication* → *Users* → *Add user* → *Create new user*: tu correo, una contraseña larga y única, y marca **Auto Confirm User**.
 5. **Cargar datos iniciales (opcional).** Abre `supabase/seed.sql`, cambia `TU_CORREO@ejemplo.com` por tu correo, **revisa cada cifra con tus estados de cuenta** y córrelo en el *SQL Editor*.
 6. **Verificar trigger y RLS (opcional, recomendado).** Cambia el correo en `supabase/tests/verify.sql` (línea marcada con ←) y córrelo. Si ves **“Success. No rows returned”**, pasaron las 4 pruebas; si algo falla, verás un error que empieza con `FALLA` y dice cuál. No deja datos.
-7. **Copiar las claves.** *Project Settings* → *API Keys*: copia la **Project URL** y la clave **anon / publishable**. Nunca uses la `service_role` / `secret` en el front.
+7. **Copiar las claves.**
+   - **Clave:** *Project Settings* → *API Keys* → sección **Publishable key** → copia la clave `sb_publishable_…` (la `anon` *legacy* también funciona, pero Supabase la retira en 2027). **Nunca** uses una **Secret key** (`sb_secret_…`) ni la `service_role` en el front.
+   - **URL:** *Project Settings* → *Data API* (o el botón **Connect** arriba): `https://<id-del-proyecto>.supabase.co`.
 8. **Variables locales.** Copia `.env.example` a `.env.local` y pega los valores:
 
    ```bash
