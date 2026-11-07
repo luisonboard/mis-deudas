@@ -1,66 +1,81 @@
 -- Verificación del trigger de saldo y de RLS (vectores de la sección 5.4).
--- Córrelo en el SQL Editor DESPUÉS de cargar seed.sql. Cambia el correo.
--- Todo ocurre dentro de una transacción que se revierte al final: no deja datos.
-
-begin;
-
-create temp table _uid as select id from auth.users where email = 'TU_CORREO@ejemplo.com';
-grant select on _uid to authenticated, anon;
-
--- ── Como el usuario A (dueño de los datos) ──
-select set_config('request.jwt.claims', json_build_object('sub', (select id from _uid), 'role', 'authenticated')::text, true);
-set local role authenticated;
-
-create temp table _before on commit drop as
-  select current_balance from public.debts where name = 'Diners Titanium';
-
-insert into public.payments (debt_id, paid_on, amount, kind, interest_part, principal_part)
-select id, current_date, 100, 'extra', 20, 80 from public.debts where name = 'Diners Titanium';
+-- Córrelo en el SQL Editor DESPUÉS de cargar seed.sql. Cambia el correo en la línea marcada.
+--
+-- Es UNA sola sentencia (un bloque DO), sin tablas temporales, para que funcione en el
+-- SQL Editor de Supabase. Corre en una sola transacción: si algo falla, se revierte todo.
+--
+-- Resultado:
+--   · "Success. No rows returned"  → pasaron las 4 pruebas.
+--   · Un error que empieza con "FALLA" → dice qué prueba falló.
+-- El pago de prueba se inserta y se borra, así que no deja datos.
 
 do $$
-declare b numeric := (select current_balance from _before);
-        a numeric := (select current_balance from public.debts where name = 'Diners Titanium');
+declare
+  v_email  text := 'TU_CORREO@ejemplo.com';   -- ← cambia esto
+  v_uid    uuid;
+  v_debt   uuid;
+  v_pay    uuid;
+  v_before numeric;
+  v_after  numeric;
+  v_n      bigint;
 begin
-  if round(b - a, 2) <> 80 then raise exception 'FALLA trigger: bajó % (esperado 80)', b - a; end if;
-  raise notice 'OK trigger: el pago extra de 100 con 20 de interés bajó el saldo 80';
-end $$;
-
-delete from public.payments where debt_id = (select id from public.debts where name = 'Diners Titanium') and amount = 100 and kind = 'extra';
-
-do $$
-begin
-  if (select current_balance from public.debts where name = 'Diners Titanium') <> (select current_balance from _before) then
-    raise exception 'FALLA trigger: el saldo no volvió al valor anterior';
+  -- Como postgres: buscar al usuario
+  select id into v_uid from auth.users where email = v_email;
+  if v_uid is null then
+    raise exception 'FALLA: no existe un usuario con el correo %', v_email;
   end if;
-  raise notice 'OK trigger: al borrar el pago el saldo vuelve al valor anterior';
-end $$;
 
--- ── Como un usuario B cualquiera ──
-reset role;
-select set_config('request.jwt.claims', json_build_object('sub', gen_random_uuid(), 'role', 'authenticated')::text, true);
-set local role authenticated;
+  -- ── Como el usuario A (dueño de los datos) ──
+  perform set_config('request.jwt.claims', json_build_object('sub', v_uid, 'role', 'authenticated')::text, true);
+  set local role authenticated;
 
-do $$
-declare n int := (select count(*) from public.debts) + (select count(*) from public.settings)
-               + (select count(*) from public.fixed_expenses) + (select count(*) from public.savings_goals);
-begin
-  if n <> 0 then raise exception 'FALLA RLS: el usuario B ve % filas', n; end if;
-  raise notice 'OK RLS: el usuario B ve 0 filas';
-end $$;
+  select id, current_balance into v_debt, v_before from public.debts where name = 'Diners Titanium';
+  if v_debt is null then
+    raise exception 'FALLA: el usuario A no ve la deuda "Diners Titanium" (¿corriste seed.sql?)';
+  end if;
 
--- ── Sin sesión (anon) ──
-reset role;
-select set_config('request.jwt.claims', '{"role":"anon"}', true);
-set local role anon;
+  insert into public.payments (debt_id, paid_on, amount, kind, interest_part, principal_part)
+  values (v_debt, current_date, 100, 'extra', 20, 80)
+  returning id into v_pay;
 
-do $$
-begin
+  select current_balance into v_after from public.debts where id = v_debt;
+  if round(v_before - v_after, 2) <> 80 then
+    raise exception 'FALLA trigger: el saldo bajó % (esperado 80)', v_before - v_after;
+  end if;
+
+  delete from public.payments where id = v_pay;
+
+  select current_balance into v_after from public.debts where id = v_debt;
+  if v_after <> v_before then
+    raise exception 'FALLA trigger: al borrar el pago el saldo quedó en % (esperado %)', v_after, v_before;
+  end if;
+
+  -- ── Como un usuario B cualquiera ──
+  reset role;
+  perform set_config('request.jwt.claims', json_build_object('sub', gen_random_uuid(), 'role', 'authenticated')::text, true);
+  set local role authenticated;
+
+  select (select count(*) from public.debts) + (select count(*) from public.payments)
+       + (select count(*) from public.settings) + (select count(*) from public.fixed_expenses)
+       + (select count(*) from public.savings_goals) + (select count(*) from public.balance_checkins)
+    into v_n;
+  if v_n <> 0 then
+    raise exception 'FALLA RLS: el usuario B ve % filas', v_n;
+  end if;
+
+  -- ── Sin sesión (anon) ──
+  reset role;
+  perform set_config('request.jwt.claims', '{"role":"anon"}', true);
+  set local role anon;
+
   begin
-    perform 1 from public.debts limit 1;
-    if found then raise exception 'FALLA RLS: anon ve deudas'; end if;
-  exception when insufficient_privilege then null; -- sin permiso: correcto
+    select count(*) into v_n from public.debts;
+    if v_n <> 0 then
+      raise exception 'FALLA RLS: sin sesión se ven % deudas', v_n;
+    end if;
+  exception when insufficient_privilege then
+    null; -- anon no tiene permiso sobre la tabla: correcto
   end;
-  raise notice 'OK RLS: sin sesión no se ve ninguna fila';
-end $$;
 
-rollback;
+  reset role;
+end $$;

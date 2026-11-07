@@ -30,7 +30,7 @@ npm run build      # tsc + vite build + service worker
 3. **Desactivar el registro público.** *Authentication* → *Sign In / Providers*: deja **Email** activado y **desactiva “Allow new users to sign up”**. Puedes desactivar también “Confirm email”, porque el usuario se crea a mano.
 4. **Crear tu usuario.** *Authentication* → *Users* → *Add user* → *Create new user*: tu correo, una contraseña larga y única, y marca **Auto Confirm User**.
 5. **Cargar datos iniciales (opcional).** Abre `supabase/seed.sql`, cambia `TU_CORREO@ejemplo.com` por tu correo, **revisa cada cifra con tus estados de cuenta** y córrelo en el *SQL Editor*.
-6. **Verificar trigger y RLS (opcional, recomendado).** Cambia el correo en `supabase/tests/verify.sql` y córrelo. Debes ver cuatro avisos `OK …`. El script se revierte solo y no deja datos.
+6. **Verificar trigger y RLS (opcional, recomendado).** Cambia el correo en `supabase/tests/verify.sql` (línea marcada con ←) y córrelo. Si ves **“Success. No rows returned”**, pasaron las 4 pruebas; si algo falla, verás un error que empieza con `FALLA` y dice cuál. No deja datos.
 7. **Copiar las claves.** *Project Settings* → *API Keys*: copia la **Project URL** y la clave **anon / publishable**. Nunca uses la `service_role` / `secret` en el front.
 8. **Variables locales.** Copia `.env.example` a `.env.local` y pega los valores:
 
