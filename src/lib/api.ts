@@ -36,6 +36,7 @@ export const qk = {
   fixed: ['fixed_expenses'] as const,
   fixedPayments: ['fixed_expense_payments'] as const,
   movements: ['savings_movements'] as const,
+  goals: ['savings_goal_balances'] as const,
 };
 
 // ───────────── Lecturas ─────────────
@@ -270,7 +271,7 @@ export interface SavingsGoalBalance {
 
 export function useSavingsGoals() {
   return useQuery({
-    queryKey: ['savings_goal_balances'] as const,
+    queryKey: qk.goals,
     queryFn: async () => {
       const rows = await unwrap<SavingsGoalBalance[]>(
         supabase.from('savings_goal_balances').select('*').order('priority').order('created_at'),
@@ -298,4 +299,30 @@ export function useSavePlan() {
     },
     [qk.settings, qk.debts],
   );
+}
+
+export function useSaveGoal() {
+  return useWrite(
+    async ({ id, ...g }: { id?: string; name: string; target_amount: number; priority: number }) => {
+      if (id) return unwrap(supabase.from('savings_goals').update(g).eq('id', id).select().single());
+      return unwrap(supabase.from('savings_goals').insert(g).select().single());
+    },
+    [qk.goals],
+  );
+}
+
+export function useDeleteGoal() {
+  return useWrite((id: string) => unwrap(supabase.from('savings_goals').delete().eq('id', id)), [qk.goals, qk.movements]);
+}
+
+export function useAddMovement() {
+  return useWrite(
+    (m: Pick<SavingsMovement, 'goal_id' | 'moved_on' | 'amount' | 'from_main_account'> & { note?: string | null }) =>
+      unwrap(supabase.from('savings_movements').insert(m).select().single()),
+    [qk.movements, qk.goals],
+  );
+}
+
+export function useDeleteMovement() {
+  return useWrite((id: string) => unwrap(supabase.from('savings_movements').delete().eq('id', id)), [qk.movements, qk.goals]);
 }

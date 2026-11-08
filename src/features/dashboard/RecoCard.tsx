@@ -16,6 +16,8 @@ import type { RecoTarget } from '../../lib/finance/recommend';
 import { INCOME_KIND_LABEL } from '../../lib/types';
 import { Button, Card, Empty, Sheet, useOnline } from '../../components/ui';
 import { PaymentForm } from '../daily/forms';
+import { MovementForm } from '../savings/SavingsPage';
+import { allocateSaving } from '../../lib/finance/savings';
 
 function Targets({ targets, loanIds }: { targets: RecoTarget[]; loanIds: Set<string> }) {
   return (
@@ -43,6 +45,7 @@ export function RecoCard({ today }: { today: string }) {
   const goals = useSavingsGoals();
   const online = useOnline();
   const [paying, setPaying] = useState<{ debtId: string; amount: number } | null>(null);
+  const [saving, setSaving] = useState<{ goalId: string; amount: number } | null>(null);
 
   const latest = checkins.data?.[0];
   const ready =
@@ -80,6 +83,8 @@ export function RecoCard({ today }: { today: string }) {
   const { reco, cycle, savingPending, targets, decimo } = result;
   const loanIds = new Set((debts.data ?? []).filter((d) => d.kind === 'loan').map((d) => d.id));
   const stale = latest.checked_on !== today;
+  const goalInputs = (goals.data ?? []).map((g) => ({ id: g.id, name: g.name, target: g.target_amount, balance: g.balance, priority: g.priority }));
+  const savingAlloc = decimo ? allocateSaving(decimo.toColchon + decimo.toSaving, goalInputs) : [];
 
   return (
     <>
@@ -96,6 +101,11 @@ export function RecoCard({ today }: { today: string }) {
           {decimo.targets[0] && (
             <Button className="mt-3 w-full" disabled={!online} onClick={() => setPaying({ debtId: decimo.targets[0].debtId, amount: decimo.targets[0].amount })}>
               Registrar abono
+            </Button>
+          )}
+          {savingAlloc[0] && (
+            <Button variant="secondary" className="mt-2 w-full" disabled={!online} onClick={() => setSaving(savingAlloc[0])}>
+              Apartar {formatMoney(savingAlloc[0].amount)} en {savingAlloc[0].name}
             </Button>
           )}
         </Card>
@@ -180,6 +190,11 @@ export function RecoCard({ today }: { today: string }) {
         )}
       </Card>
 
+      <Sheet title="Apartar ahorro" open={saving !== null} onClose={() => setSaving(null)}>
+        {saving && (
+          <MovementForm key={saving.goalId} goals={goals.data ?? []} goalId={saving.goalId} initialAmount={saving.amount} onDone={() => setSaving(null)} />
+        )}
+      </Sheet>
       <Sheet title="Registrar abono" open={paying !== null} onClose={() => setPaying(null)}>
         {paying && (
           <PaymentForm

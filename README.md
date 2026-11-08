@@ -10,7 +10,7 @@ La especificación completa está en [`docs/PWA_Mis_Deudas_spec.md`](docs/PWA_Mi
 |---|---|
 | 1. Proyecto, Auth, migración, CRUD de deudas, pagos, check-in diario, gastos fijos, ingresos, pantalla Hoy básica | ✅ |
 | 2. `simulatePlan`, `recommend`, Simulador, gráfico | ✅ |
-| 3. Ahorros (metas y movimientos) | pendiente |
+| 3. Ahorros (metas y movimientos) | ✅ |
 | 4. PWA instalable, caché sin conexión, despliegue | parcial: manifest, service worker, `_headers` y `_redirects` ya están |
 | 5. Exportar CSV / `.ics`, cola de escrituras sin conexión | pendiente |
 
@@ -70,3 +70,11 @@ npm run build      # tsc + vite build + service worker
 - **Décimos.** Si en el ciclo se registró un décimo, se sugiere `monto × %` como abono sin margen hasta que se registren abonos extra por ese valor desde ese día. El resto va primero a lo que le falte al colchón (la meta de ahorro de mayor prioridad) y luego al ahorro.
 - **Gráfico.** Azul `#3987e5` = tu plan, naranja punteado `#d95926` = sin abonos extra; validados con el script de paleta para el fondo oscuro. Tiene vista de tabla.
 
+
+## Decisiones de la Fase 3
+
+- **Orden de las metas.** Se llenan por prioridad ascendente: la meta con el número menor es el colchón. La pantalla muestra a cuál va el próximo ahorro.
+- **Colchón dentro de la cuenta.** Como el recomendador asume que el colchón se queda en la cuenta (sección 5.5), sus movimientos vienen marcados por defecto como “no sale de la cuenta”, así no inflan el gasto estimado. Las demás metas vienen como “sale de la cuenta”. Se puede cambiar en cada movimiento.
+- **Ahorro del ciclo.** Cualquier ahorro apartado en el ciclo, al colchón o a otra meta, descuenta del ahorro mensual pendiente del recomendador.
+- **Retiros.** Se guardan como montos negativos y no pueden superar el saldo de la meta. Los movimientos no se editan: se borran y se vuelven a registrar.
+- **Décimos.** La tarjeta del décimo ofrece apartar el resto en la meta que toca, según el orden de prioridad.

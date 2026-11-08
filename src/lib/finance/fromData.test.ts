@@ -93,6 +93,13 @@ describe('buildDailyReco (vectores 5.5 a partir de filas)', () => {
     expect(r.targets).toEqual([{ debtId: 't', name: 'Diners Titanium', amount: 280 }]);
   });
 
+  it('el ahorro apartado al colchón (dentro de la cuenta) también cubre el ahorro del ciclo', () => {
+    const salary: Income = { id: 's', user_id: u, received_on: '2026-11-30', amount: 1413.65, kind: 'salary', note: null, created_at: '' };
+    const mov = { id: 'm', user_id: u, goal_id: 'c', moved_on: '2026-12-01', amount: 60, from_main_account: false, note: null, created_at: '' };
+    const r = buildDailyReco({ ...base, today: '2026-12-02', balance: 1500, incomes: [salary], movements: [mov] });
+    expect(r.savingPending).toBe(40);
+  });
+
   it('décimo tercero recibido: sugiere 50 % a deuda hasta registrar el abono', () => {
     const dec: Income = { id: 'dt', user_id: u, received_on: '2026-12-20', amount: 1413.65, kind: 'decimo_tercero', note: null, created_at: '' };
     const salary: Income = { id: 's', user_id: u, received_on: '2026-11-30', amount: 1413.65, kind: 'salary', note: null, created_at: '' };

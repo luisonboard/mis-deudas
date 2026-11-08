@@ -20,6 +20,7 @@ import { useUserId } from '../auth/AuthProvider';
 import { Button, Card, Empty, ErrorBox, Field, Loading, MoneyInput, ProgressBar, Sheet, useOnline } from '../../components/ui';
 import { FixedPaymentForm, IncomeForm, PaymentForm } from '../daily/forms';
 import { PlanCard } from './PlanCard';
+import { SavingsCard } from './SavingsCard';
 import { RecoCard } from './RecoCard';
 
 type SheetKind = 'payment' | 'fixed' | 'income' | null;
@@ -316,6 +317,8 @@ export function TodayPage() {
           </Button>
         )}
       </Card>
+
+      <SavingsCard />
 
       <Sheet title="Registrar pago de tarjeta" open={sheet === 'payment'} onClose={() => setSheet(null)}>
         <PaymentForm onDone={() => setSheet(null)} />

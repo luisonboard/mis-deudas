@@ -141,8 +141,9 @@ export function buildDailyReco(d: RecoData): DailyReco {
   const cycle = currentCycle(d.today, s.payday_rule, s.payday_day, salaryDates);
 
   // El ahorro del ciclo sale del sueldo: solo se exige si el sueldo de este ciclo ya llegó.
+  // Cuenta cualquier ahorro apartado en el ciclo (también el del colchón, que se queda en la cuenta).
   const savedThisCycle = d.movements
-    .filter((m) => m.from_main_account && m.amount > 0 && m.moved_on >= cycle.start && m.moved_on <= d.today)
+    .filter((m) => m.amount > 0 && m.moved_on >= cycle.start && m.moved_on <= d.today)
     .reduce((t, m) => t + m.amount, 0);
   const savingPending = cycle.salaryRegistered ? Math.max(s.monthly_saving_target - savedThisCycle, 0) : 0;
 
