@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import {
   useCheckins,
   useDebts,
+  useFixedExpenses,
   useFixedPayments,
   useIncomes,
   usePayments,
@@ -13,13 +14,30 @@ import {
 import { addDays, isLastDayOfMonth, todayIn } from '../../lib/dates';
 import { formatDate, formatMoney, parseMoney } from '../../lib/format';
 import { estimateSpend, type SpendResult } from '../../lib/finance/daily';
-import { nextPayments } from '../../lib/finance/nextPayment';
+import { nextFixedExpenses, nextPayments } from '../../lib/finance/nextPayment';
 import type { BalanceCheckin } from '../../lib/types';
 import { useUserId } from '../auth/AuthProvider';
 import { Button, Card, Empty, ErrorBox, Field, Loading, MoneyInput, ProgressBar, Sheet, Stat, useOnline } from '../../components/ui';
 import { FixedPaymentForm, IncomeForm, PaymentForm } from '../daily/forms';
 
 type SheetKind = 'payment' | 'fixed' | 'income' | null;
+
+interface UpcomingItem {
+  key: string;
+  kind: 'debt' | 'fixed';
+  name: string;
+  amount: number;
+  due: string | null;
+  daysLeft: number | null;
+  expenseId?: string;
+  month?: string;
+}
+
+function dueLabel(daysLeft: number): string {
+  if (daysLeft < 0) return `vencido hace ${-daysLeft} día${daysLeft === -1 ? '' : 's'}`;
+  if (daysLeft === 0) return 'vence hoy';
+  return `en ${daysLeft} día${daysLeft === 1 ? '' : 's'}`;
+}
 
 export function TodayPage() {
   const settings = useSettings();
@@ -31,7 +49,9 @@ export function TodayPage() {
   const incomes = useIncomes();
   const fixedPayments = useFixedPayments();
   const movements = useSavingsMovements();
+  const fixed = useFixedExpenses();
   const [sheet, setSheet] = useState<SheetKind>(null);
+  const [fixedPick, setFixedPick] = useState<{ expenseId: string; month: string } | null>(null);
 
   const dailyBudget = settings.data?.daily_living_budget ?? 12.5;
   const salaryToday = (incomes.data ?? []).some((i) => i.kind === 'salary' && i.received_on === today);
@@ -68,7 +88,9 @@ export function TodayPage() {
     // Racha: check-ins consecutivos (desde el último) con gasto diario ≤ tope.
     let streak = 0;
     for (let i = spends.length - 1; i >= 0 && spends[i].r.perDay <= dailyBudget + 0.005 && !spends[i].r.suspicious; i--) streak += spends[i].r.days;
-    return { spent, days, budget: days * dailyBudget, streak };
+    // Tope semanal fijo (7 días) y tope proporcional a los días que ya tienen datos.
+    const coveredDays = Math.min(days, 7);
+    return { spent, days: coveredDays, budget: 7 * dailyBudget, paceBudget: coveredDays * dailyBudget, streak };
   }, [spends, today, dailyBudget]);
 
   const totals = useMemo(() => {
@@ -78,7 +100,7 @@ export function TodayPage() {
     return { initial, current, paid: initial - current };
   }, [debts.data]);
 
-  const upcoming = useMemo(() => {
+  const upcomingDebts = useMemo(() => {
     const byDebt: Record<string, string[]> = {};
     for (const p of payments.data ?? []) if (p.kind === 'regular') (byDebt[p.debt_id] ??= []).push(p.paid_on);
     return nextPayments(
@@ -99,6 +121,31 @@ export function TodayPage() {
     );
   }, [debts.data, payments.data, today]);
 
+  // Próximos pagos: deudas + gastos fijos, ordenados por fecha (los sin fecha al final).
+  const upcoming = useMemo<UpcomingItem[]>(() => {
+    const paidMonths: Record<string, string[]> = {};
+    for (const p of fixedPayments.data ?? []) (paidMonths[p.expense_id] ??= []).push(p.month);
+    const fixedItems = nextFixedExpenses(
+      (fixed.data ?? []).map((f) => ({ id: f.id, name: f.name, amount: f.amount, dueDay: f.due_day, active: f.active })),
+      today,
+      paidMonths,
+    );
+    const items: UpcomingItem[] = [
+      ...upcomingDebts.map((p) => ({ key: `d-${p.debtId}`, kind: 'debt' as const, name: p.name, amount: p.amount, due: p.due, daysLeft: p.daysLeft })),
+      ...fixedItems.map((f) => ({
+        key: `f-${f.expenseId}`,
+        kind: 'fixed' as const,
+        name: f.name,
+        amount: f.amount,
+        due: f.due,
+        daysLeft: f.daysLeft,
+        expenseId: f.expenseId,
+        month: f.month,
+      })),
+    ];
+    return items.sort((a, b) => (a.due ?? '9999').localeCompare(b.due ?? '9999'));
+  }, [upcomingDebts, fixed.data, fixedPayments.data, today]);
+
   const loading = settings.isLoading || debts.isLoading || checkins.isLoading;
   const error = settings.error || debts.error || checkins.error;
   if (loading) return <Loading />;
@@ -106,7 +153,13 @@ export function TodayPage() {
 
   const last = spends[spends.length - 1];
   const lastCheckin = checkins.data?.[0];
-  const next = upcoming[0];
+  const dated = upcoming.filter((u) => u.due);
+  const undated = upcoming.filter((u) => !u.due);
+  const next = dated[0];
+  const openFixed = (u: UpcomingItem) => {
+    setFixedPick(u.expenseId && u.month ? { expenseId: u.expenseId, month: u.month } : null);
+    setSheet('fixed');
+  };
 
   return (
     <div className="flex flex-col gap-4">
@@ -136,7 +189,7 @@ export function TodayPage() {
         <Button variant="secondary" className="text-sm" onClick={() => setSheet('payment')}>
           Pago de tarjeta
         </Button>
-        <Button variant="secondary" className="text-sm" onClick={() => setSheet('fixed')}>
+        <Button variant="secondary" className="text-sm" onClick={() => { setFixedPick(null); setSheet('fixed'); }}>
           Gasto fijo
         </Button>
         <Button variant="secondary" className="text-sm" onClick={() => setSheet('income')}>
@@ -175,11 +228,24 @@ export function TodayPage() {
           <>
             <div className="flex items-baseline justify-between">
               <p className="text-xl font-bold tabular-nums">{formatMoney(week.spent)}</p>
-              <p className="text-sm text-slate-400">tope {formatMoney(week.budget)}</p>
+              <p className="text-sm text-slate-400">de {formatMoney(week.budget)} (7 días)</p>
             </div>
             <div className="mt-2">
-              <ProgressBar value={week.budget ? week.spent / week.budget : 0} tone={week.spent > week.budget ? 'red' : 'emerald'} label="Gasto semanal frente al tope" />
+              <ProgressBar
+                value={week.spent / week.budget}
+                tone={week.spent > week.paceBudget + 0.005 ? 'red' : 'emerald'}
+                label="Gasto de los últimos 7 días frente al tope semanal"
+              />
             </div>
+            <p className={`mt-2 text-sm ${week.spent > week.paceBudget + 0.005 ? 'text-red-400' : 'text-emerald-300'}`}>
+              {week.days < 7 ? `${week.days} de 7 días con datos · ` : ''}
+              {week.spent > week.paceBudget + 0.005
+                ? `vas ${formatMoney(week.spent - week.paceBudget)} por encima de tu ritmo`
+                : `vas ${formatMoney(week.paceBudget - week.spent)} por debajo de tu ritmo`}
+            </p>
+            <p className="mt-1 text-xs text-slate-500">
+              Ritmo = {formatMoney(dailyBudget)} × días con datos = {formatMoney(week.paceBudget)} · quedan {formatMoney(Math.max(week.budget - week.spent, 0))} esta semana
+            </p>
             <p className="mt-2 text-sm text-slate-300">Racha bajo el tope: {week.streak} día(s)</p>
           </>
         )}
@@ -204,34 +270,70 @@ export function TodayPage() {
         )}
       </Card>
 
-      <Card title="Próximo pago">
+      <Card title="Próximos pagos">
         {next ? (
           <div className="flex items-center justify-between">
             <div>
               <p className="font-semibold">{next.name}</p>
-              <p className="text-sm text-slate-400">{formatDate(next.due)}</p>
+              <p className="text-sm text-slate-400">
+                {next.kind === 'fixed' ? 'Gasto fijo' : 'Deuda'} · {formatDate(next.due!)}
+              </p>
             </div>
             <div className="text-right">
               <p className="text-lg font-bold tabular-nums">{formatMoney(next.amount)}</p>
-              <p className={`text-sm ${next.daysLeft <= 3 ? 'text-amber-300' : 'text-slate-400'}`}>
-                {next.daysLeft === 0 ? 'vence hoy' : `en ${next.daysLeft} día(s)`}
+              <p className={`text-sm ${next.daysLeft! < 0 ? 'text-red-400' : next.daysLeft! <= 3 ? 'text-amber-300' : 'text-slate-400'}`}>
+                {dueLabel(next.daysLeft!)}
               </p>
             </div>
           </div>
         ) : (
-          <Empty>No hay pagos próximos.</Empty>
+          undated.length === 0 && <Empty>No hay pagos próximos.</Empty>
         )}
-        {upcoming.length > 1 && (
+        {(dated.length > 1 || undated.length > 0) && (
           <ul className="mt-3 divide-y divide-slate-800 text-sm">
-            {upcoming.slice(1).map((p) => (
-              <li key={p.debtId} className="flex justify-between py-1.5 text-slate-300">
-                <span>
-                  {p.name} · {formatDate(p.due)}
-                </span>
-                <span className="tabular-nums">{formatMoney(p.amount)}</span>
-              </li>
-            ))}
+            {[...dated.slice(1), ...undated].map((u) => {
+              const row = (
+                <>
+                  <span className="min-w-0">
+                    <span className="block truncate">
+                      {u.name}
+                      {u.kind === 'fixed' && <span className="ml-1.5 rounded bg-slate-800 px-1.5 text-xs text-slate-400">fijo</span>}
+                    </span>
+                    <span className={`text-xs ${u.daysLeft !== null && u.daysLeft < 0 ? 'text-red-400' : 'text-slate-500'}`}>
+                      {u.due ? `${formatDate(u.due)} · ${dueLabel(u.daysLeft!)}` : 'este mes · sin día de pago'}
+                    </span>
+                  </span>
+                  <span className="shrink-0 tabular-nums">{formatMoney(u.amount)}</span>
+                </>
+              );
+              return (
+                <li key={u.key}>
+                  {u.kind === 'fixed' ? (
+                    <button
+                      type="button"
+                      onClick={() => openFixed(u)}
+                      className="flex min-h-[44px] w-full items-center justify-between gap-2 py-1.5 text-left text-slate-300 hover:text-white"
+                      aria-label={`Marcar ${u.name} como pagado`}
+                    >
+                      {row}
+                    </button>
+                  ) : (
+                    <div className="flex min-h-[44px] items-center justify-between gap-2 py-1.5 text-slate-300">{row}</div>
+                  )}
+                </li>
+              );
+            })}
           </ul>
+        )}
+        {upcoming.some((u) => u.kind === 'fixed') && (
+          <p className="mt-2 text-xs text-slate-500">
+            Toca un gasto fijo para marcarlo como pagado. Ponle día de pago en <Link to="/ajustes" className="underline">Ajustes</Link> para ordenarlo por fecha.
+          </p>
+        )}
+        {next?.kind === 'fixed' && (
+          <Button variant="secondary" className="mt-3 w-full" onClick={() => openFixed(next)}>
+            Marcar {next.name} como pagado
+          </Button>
         )}
       </Card>
 
@@ -239,7 +341,12 @@ export function TodayPage() {
         <PaymentForm onDone={() => setSheet(null)} />
       </Sheet>
       <Sheet title="Gasto fijo pagado" open={sheet === 'fixed'} onClose={() => setSheet(null)}>
-        <FixedPaymentForm onDone={() => setSheet(null)} />
+        <FixedPaymentForm
+          key={fixedPick ? `${fixedPick.expenseId}-${fixedPick.month}` : 'any'}
+          expenseId={fixedPick?.expenseId}
+          month={fixedPick?.month}
+          onDone={() => setSheet(null)}
+        />
       </Sheet>
       <Sheet title="Registrar ingreso" open={sheet === 'income'} onClose={() => setSheet(null)}>
         <IncomeForm defaultSalary={settings.data?.monthly_income || undefined} onDone={() => setSheet(null)} />

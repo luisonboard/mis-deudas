@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { pmt } from './pmt';
 import { amortizationSchedule, suggestedInterest } from './schedule';
 import { estimateSpend } from './daily';
-import { nextPayments, type NextPaymentDebt } from './nextPayment';
+import { nextFixedExpenses, nextPayments, type NextPaymentDebt } from './nextPayment';
 
 const close = (a: number, b: number, tol = 0.01) => expect(Math.abs(a - b)).toBeLessThanOrEqual(tol);
 
@@ -103,5 +103,32 @@ describe('próximo pago', () => {
 
   it('ignora deudas pagadas', () => {
     expect(nextPayments([{ ...debts[1], status: 'paid' }], '2026-11-06', {})).toHaveLength(0);
+  });
+});
+
+describe('gastos fijos pendientes', () => {
+  const fx = [
+    { id: 'pen', name: 'Pensión', amount: 50, dueDay: null, active: true },
+    { id: 'luz', name: 'Luz', amount: 50, dueDay: 20, active: true },
+    { id: 'int', name: 'Internet', amount: 25, dueDay: 5, active: true },
+    { id: 'old', name: 'Gym', amount: 30, dueDay: 1, active: false },
+  ];
+
+  it('muestra los no pagados del mes; los vencidos con días negativos', () => {
+    const r = nextFixedExpenses(fx, '2026-11-08', {});
+    expect(r.map((x) => [x.expenseId, x.due, x.daysLeft])).toEqual([
+      ['pen', null, null],
+      ['luz', '2026-11-20', 12],
+      ['int', '2026-11-05', -3],
+    ]);
+  });
+
+  it('si ya se pagó este mes: pasa al próximo mes, o desaparece si no tiene día', () => {
+    const paid = { pen: ['2026-11-01'], int: ['2026-11-01'] };
+    const r = nextFixedExpenses(fx, '2026-11-08', paid);
+    expect(r.map((x) => [x.expenseId, x.month, x.due])).toEqual([
+      ['luz', '2026-11', '2026-11-20'],
+      ['int', '2026-12', '2026-12-05'],
+    ]);
   });
 });

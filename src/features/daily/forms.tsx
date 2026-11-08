@@ -151,20 +151,20 @@ const fixedSchema = z.object({
   amount: money.positive('El monto debe ser mayor a 0'),
 });
 
-export function FixedPaymentForm({ onDone }: { onDone?: () => void }) {
+export function FixedPaymentForm({ expenseId: initialExpense, month: initialMonth, onDone }: { expenseId?: string; month?: string; onDone?: () => void }) {
   const fixed = useFixedExpenses();
   const paidList = useFixedPayments();
   const add = useAddFixedPayment();
   const online = useOnline();
   const today = todayIn();
-  const [month, setMonth] = useState(today.slice(0, 7));
+  const [month, setMonth] = useState(initialMonth ?? today.slice(0, 7));
   const monthDate = `${month}-01`;
   const paidIds = useMemo(
     () => new Set((paidList.data ?? []).filter((p) => p.month === monthDate).map((p) => p.expense_id)),
     [paidList.data, monthDate],
   );
   const pending = (fixed.data ?? []).filter((f) => f.active && !paidIds.has(f.id));
-  const [expenseId, setExpenseId] = useState('');
+  const [expenseId, setExpenseId] = useState(initialExpense ?? '');
   const expense = pending.find((f) => f.id === expenseId) ?? pending[0];
   const [amount, setAmount] = useState<string | null>(null);
   const [paidOn, setPaidOn] = useState(today);
