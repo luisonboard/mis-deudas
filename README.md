@@ -9,7 +9,7 @@ La especificación completa está en [`docs/PWA_Mis_Deudas_spec.md`](docs/PWA_Mi
 | Fase | Estado |
 |---|---|
 | 1. Proyecto, Auth, migración, CRUD de deudas, pagos, check-in diario, gastos fijos, ingresos, pantalla Hoy básica | ✅ |
-| 2. `simulatePlan`, `recommend`, Simulador, gráfico | pendiente |
+| 2. `simulatePlan`, `recommend`, Simulador, gráfico | ✅ |
 | 3. Ahorros (metas y movimientos) | pendiente |
 | 4. PWA instalable, caché sin conexión, despliegue | parcial: manifest, service worker, `_headers` y `_redirects` ya están |
 | 5. Exportar CSV / `.ics`, cola de escrituras sin conexión | pendiente |
@@ -59,3 +59,14 @@ npm run build      # tsc + vite build + service worker
 - **Gasto estimado.** Cuenta los ingresos, pagos y ahorros con fecha en el intervalo `(check-in anterior, check-in actual]`. Un pago con fecha de hoy cuenta en el intervalo que termina hoy, así que el check-in de cada día equivale al saldo al cierre del día. Se puede actualizar varias veces al día: hay un solo check-in por día y cada vez que se guarda se sobrescribe.
 - **Próximo pago.** Usa `first_payment_date` mientras no haya llegado (con el cargo único) y luego `due_day`. Una cuota se da por cubierta si hay un pago *regular* en los 28 días previos al vencimiento.
 - **Sin conexión.** Se ven los últimos datos (caché `NetworkFirst` del service worker) y los botones de guardar se deshabilitan con un aviso.
+
+## Decisiones de la Fase 2
+
+- **Plan desde hoy.** La simulación arranca en el mes actual con los saldos actuales. El primer mes de pago de cada deuda sale de `first_payment_date`. Si la cuota de este mes ya está registrada como pago *regular*, empieza en el mes siguiente y sin el cargo único.
+- **Ciclo de sueldo.** El próximo cobro es el último día del mes (o el día fijo). Si el sueldo de ese día ya se registró, o llegó hasta 5 días antes, el próximo cobro pasa al mes siguiente.
+- **Ahorro pendiente del ciclo.** Solo se exige si el sueldo que abre el ciclo está registrado: `ahorro mensual − ahorros que salieron de la cuenta desde ese día`. Por eso el primer ciclo (noviembre, sin sueldo registrado) no aparta ahorro, como en el vector del 6-nov.
+- **Obligaciones.** Cuotas de deuda que vencen antes del próximo sueldo y no tienen pago regular registrado, más los gastos fijos de cada mes del ciclo sin pago registrado (los que no tienen día cuentan siempre).
+- **Saldo usado.** El check-in de hoy; si no hay, el último, con un aviso.
+- **Décimos.** Si en el ciclo se registró un décimo, se sugiere `monto × %` como abono sin margen hasta que se registren abonos extra por ese valor desde ese día. El resto va primero a lo que le falte al colchón (la meta de ahorro de mayor prioridad) y luego al ahorro.
+- **Gráfico.** Azul `#3987e5` = tu plan, naranja punteado `#d95926` = sin abonos extra; validados con el script de paleta para el fondo oscuro. Tiene vista de tabla.
+

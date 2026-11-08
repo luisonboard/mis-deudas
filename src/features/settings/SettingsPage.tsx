@@ -161,7 +161,7 @@ function SettingsForm({ current }: { current: Settings | null }) {
         <Field label="Zona horaria">
           <input className={inputClass} value={f.timezone} onChange={(e) => set('timezone')(e.target.value)} />
         </Field>
-        <p className="text-xs text-slate-500">El abono extra mensual y su mes de inicio se guardan desde el Simulador (Fase 2).</p>
+        <p className="text-xs text-slate-500">El abono extra mensual, su mes de inicio, el % de décimos y el orden de abonos se ajustan en el Simulador → “Guardar como mi plan”.</p>
         {msg && <p role="status" className="text-sm text-emerald-300">{msg}</p>}
         <Button type="submit" disabled={save.isPending || !online}>
           {save.isPending ? 'Guardando…' : 'Guardar ajustes'}

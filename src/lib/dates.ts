@@ -59,3 +59,10 @@ export function dateInMonth(ym: string, day: number): string {
   const d = Math.min(day, daysInMonth(y, m));
   return `${ym}-${String(d).padStart(2, '0')}`;
 }
+
+/** Meses de 'YYYY-MM' a 'YYYY-MM' (b − a). */
+export function monthsBetween(a: string, b: string): number {
+  const [ya, ma] = a.split('-').map(Number);
+  const [yb, mb] = b.split('-').map(Number);
+  return yb * 12 + mb - (ya * 12 + ma);
+}

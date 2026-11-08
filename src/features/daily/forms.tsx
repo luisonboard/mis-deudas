@@ -41,16 +41,26 @@ const paymentSchema = z
   })
   .refine((p) => p.interest_part <= p.amount + 0.005, { message: 'El interés no puede superar el monto', path: ['interest_part'] });
 
-export function PaymentForm({ debtId, onDone }: { debtId?: string; onDone?: () => void }) {
+export function PaymentForm({
+  debtId,
+  initialKind,
+  initialAmount,
+  onDone,
+}: {
+  debtId?: string;
+  initialKind?: PaymentKind;
+  initialAmount?: number;
+  onDone?: () => void;
+}) {
   const debts = useDebts();
   const add = useAddPayment();
   const online = useOnline();
   const active = (debts.data ?? []).filter((d) => d.status === 'active');
   const [selected, setSelected] = useState(debtId ?? '');
   const debt: Debt | undefined = (debts.data ?? []).find((d) => d.id === (selected || active[0]?.id));
-  const [kind, setKind] = useState<PaymentKind>('regular');
+  const [kind, setKind] = useState<PaymentKind>(initialKind ?? 'regular');
   const [paidOn, setPaidOn] = useState(todayIn());
-  const [amount, setAmount] = useState('');
+  const [amount, setAmount] = useState(initialAmount ? String(initialAmount).replace('.', ',') : '');
   const [interest, setInterest] = useState<string | null>(null); // null = usar el sugerido
   const [note, setNote] = useState('');
   const [error, setError] = useState<string | null>(null);

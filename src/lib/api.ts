@@ -257,3 +257,45 @@ export function useSaveSettings() {
     [qk.settings],
   );
 }
+
+export interface SavingsGoalBalance {
+  id: string;
+  user_id: string;
+  name: string;
+  target_amount: number;
+  priority: number;
+  created_at: string;
+  balance: number;
+}
+
+export function useSavingsGoals() {
+  return useQuery({
+    queryKey: ['savings_goal_balances'] as const,
+    queryFn: async () => {
+      const rows = await unwrap<SavingsGoalBalance[]>(
+        supabase.from('savings_goal_balances').select('*').order('priority').order('created_at'),
+      );
+      return rows.map((g) => num(g, ['target_amount', 'balance']));
+    },
+  });
+}
+
+/** Guarda "mi plan" desde el simulador: ajustes + prioridades de las deudas. */
+export function useSavePlan() {
+  return useWrite(
+    async (v: {
+      user_id: string;
+      extra_monthly: number;
+      decimos_pct_to_debt: number;
+      extra_start_month: string | null;
+      priorities: Record<string, number>;
+    }) => {
+      const { priorities, ...s } = v;
+      await unwrap(supabase.from('settings').upsert({ ...s, updated_at: new Date().toISOString() }).select().single());
+      for (const [id, payoff_priority] of Object.entries(priorities)) {
+        await unwrap(supabase.from('debts').update({ payoff_priority }).eq('id', id).select().single());
+      }
+    },
+    [qk.settings, qk.debts],
+  );
+}

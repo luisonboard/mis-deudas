@@ -17,8 +17,10 @@ import { estimateSpend, type SpendResult } from '../../lib/finance/daily';
 import { nextFixedExpenses, nextPayments } from '../../lib/finance/nextPayment';
 import type { BalanceCheckin } from '../../lib/types';
 import { useUserId } from '../auth/AuthProvider';
-import { Button, Card, Empty, ErrorBox, Field, Loading, MoneyInput, ProgressBar, Sheet, Stat, useOnline } from '../../components/ui';
+import { Button, Card, Empty, ErrorBox, Field, Loading, MoneyInput, ProgressBar, Sheet, useOnline } from '../../components/ui';
 import { FixedPaymentForm, IncomeForm, PaymentForm } from '../daily/forms';
+import { PlanCard } from './PlanCard';
+import { RecoCard } from './RecoCard';
 
 type SheetKind = 'payment' | 'fixed' | 'income' | null;
 
@@ -92,13 +94,6 @@ export function TodayPage() {
     const coveredDays = Math.min(days, 7);
     return { spent, days: coveredDays, budget: 7 * dailyBudget, paceBudget: coveredDays * dailyBudget, streak };
   }, [spends, today, dailyBudget]);
-
-  const totals = useMemo(() => {
-    const active = (debts.data ?? []).filter((d) => d.status !== 'archived');
-    const initial = active.reduce((s, d) => s + d.initial_balance, 0);
-    const current = active.reduce((s, d) => s + d.current_balance, 0);
-    return { initial, current, paid: initial - current };
-  }, [debts.data]);
 
   const upcomingDebts = useMemo(() => {
     const byDebt: Record<string, string[]> = {};
@@ -197,6 +192,8 @@ export function TodayPage() {
         </Button>
       </div>
 
+      <RecoCard today={today} />
+
       {last && last.curr.checked_on === today && (
         <Card title="Gasto estimado">
           {last.r.suspicious ? (
@@ -251,24 +248,7 @@ export function TodayPage() {
         )}
       </Card>
 
-      <Card title="Deudas">
-        {totals.initial === 0 ? (
-          <Empty>
-            Sin deudas registradas. <Link to="/deudas" className="underline">Agregar</Link>
-          </Empty>
-        ) : (
-          <>
-            <div className="grid grid-cols-2 gap-3">
-              <Stat label="Deuda actual" value={totals.current} />
-              <Stat label="Capital pagado" value={totals.paid} />
-            </div>
-            <div className="mt-3">
-              <ProgressBar value={totals.paid / totals.initial} label="Capital pagado sobre deuda inicial" />
-            </div>
-            <p className="mt-2 text-xs text-slate-500">La fecha libre de deudas y el interés proyectado llegan en la Fase 2 (simulador).</p>
-          </>
-        )}
-      </Card>
+      <PlanCard />
 
       <Card title="Próximos pagos">
         {next ? (
