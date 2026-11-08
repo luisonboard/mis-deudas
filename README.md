@@ -56,6 +56,6 @@ npm run build      # tsc + vite build + service worker
 ## Decisiones de la Fase 1
 
 - **Pagos.** El interés se sugiere con `saldo × tasa / 12` en pagos regulares (editable). En abonos extra parte de 0 y también se puede editar. Un pago tipo *cargo* no cambia el saldo. Los pagos no se editan: se borran y se vuelven a registrar (el trigger mantiene `current_balance`).
-- **Gasto estimado.** Cuenta los ingresos, pagos y ahorros con fecha en el intervalo `(check-in anterior, check-in actual]`. Si un pago se hace el mismo día de un check-in, cuenta para el siguiente intervalo.
+- **Gasto estimado.** Cuenta los ingresos, pagos y ahorros con fecha en el intervalo `(check-in anterior, check-in actual]`. Un pago con fecha de hoy cuenta en el intervalo que termina hoy, así que el check-in de cada día equivale al saldo al cierre del día. Se puede actualizar varias veces al día: hay un solo check-in por día y cada vez que se guarda se sobrescribe.
 - **Próximo pago.** Usa `first_payment_date` mientras no haya llegado (con el cargo único) y luego `due_day`. Una cuota se da por cubierta si hay un pago *regular* en los 28 días previos al vencimiento.
 - **Sin conexión.** Se ven los últimos datos (caché `NetworkFirst` del service worker) y los botones de guardar se deshabilitan con un aviso.
