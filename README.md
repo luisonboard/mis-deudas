@@ -78,3 +78,12 @@ npm run build      # tsc + vite build + service worker
 - **Ahorro del ciclo.** Cualquier ahorro apartado en el ciclo, al colchón o a otra meta, descuenta del ahorro mensual pendiente del recomendador.
 - **Retiros.** Se guardan como montos negativos y no pueden superar el saldo de la meta. Los movimientos no se editan: se borran y se vuelven a registrar.
 - **Décimos.** La tarjeta del décimo ofrece apartar el resto en la meta que toca, según el orden de prioridad.
+
+## Historial (`/historial`)
+
+Se abre desde **Hoy → Gasto estimado / Gasto de la semana → Historial**.
+
+- **Por mes (◀ ▶):** gasto estimado total y promedio por día frente al tope, días bajo el tope, ingresos, pagos a deudas, gastos fijos, ahorro neto y saldo de inicio a fin.
+- **Gráfico por día:** barras frente al tope (azul = bajo, rojo = sobre). Cuando hay días sin check-in, el gasto del intervalo se reparte entre esos días y las barras se ven más tenues.
+- **Día por día:** saldo, gasto por día y, al tocar, los movimientos registrados en ese intervalo. Los días en que el saldo sube sin ingresos registrados salen con “⚠ revisar” y no suman al gasto.
+- Un intervalo que cruza de un mes a otro cuenta para el mes de su check-in final en el resumen; en el gráfico cada día va en su mes.

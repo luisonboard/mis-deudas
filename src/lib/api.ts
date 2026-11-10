@@ -88,7 +88,7 @@ export function useCheckins() {
     queryKey: qk.checkins,
     queryFn: async () => {
       const rows = await unwrap<BalanceCheckin[]>(
-        supabase.from('balance_checkins').select('*').order('checked_on', { ascending: false }).limit(120),
+        supabase.from('balance_checkins').select('*').order('checked_on', { ascending: false }).limit(400),
       );
       return rows.map((c) => num(c, ['balance']));
     },
@@ -100,7 +100,7 @@ export function useIncomes() {
     queryKey: qk.incomes,
     queryFn: async () => {
       const rows = await unwrap<Income[]>(
-        supabase.from('incomes').select('*').order('received_on', { ascending: false }).limit(200),
+        supabase.from('incomes').select('*').order('received_on', { ascending: false }).limit(500),
       );
       return rows.map((i) => num(i, ['amount']));
     },
@@ -122,7 +122,7 @@ export function useFixedPayments() {
     queryKey: qk.fixedPayments,
     queryFn: async () => {
       const rows = await unwrap<FixedExpensePayment[]>(
-        supabase.from('fixed_expense_payments').select('*').order('paid_on', { ascending: false }).limit(300),
+        supabase.from('fixed_expense_payments').select('*').order('paid_on', { ascending: false }).limit(1000),
       );
       return rows.map((f) => num(f, ['amount']));
     },
@@ -134,7 +134,7 @@ export function useSavingsMovements() {
     queryKey: qk.movements,
     queryFn: async () => {
       const rows = await unwrap<SavingsMovement[]>(
-        supabase.from('savings_movements').select('*').order('moved_on', { ascending: false }).limit(300),
+        supabase.from('savings_movements').select('*').order('moved_on', { ascending: false }).limit(1000),
       );
       return rows.map((m) => num(m, ['amount']));
     },

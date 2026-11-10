@@ -196,7 +196,7 @@ export function TodayPage() {
       <RecoCard today={today} />
 
       {last && last.curr.checked_on === today && (
-        <Card title="Gasto estimado">
+        <Card title="Gasto estimado" action={<Link to="/historial" className="text-xs text-slate-400 underline">Historial</Link>}>
           {last.r.suspicious ? (
             <p role="alert" className="text-sm text-amber-300">
               El saldo subió {formatMoney(-last.r.estimated)} sin ingresos registrados. ¿Falta registrar un ingreso o sobra un pago?
@@ -219,7 +219,7 @@ export function TodayPage() {
         </Card>
       )}
 
-      <Card title="Gasto de la semana">
+      <Card title="Gasto de la semana" action={<Link to="/historial" className="text-xs text-slate-400 underline">Historial</Link>}>
         {week.days === 0 ? (
           <Empty>Haz check-in dos días seguidos para ver tu gasto estimado.</Empty>
         ) : (

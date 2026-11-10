@@ -6,6 +6,7 @@ import { DebtDetailPage } from './features/debts/DebtDetailPage';
 import { SettingsPage } from './features/settings/SettingsPage';
 import { SimulatorPage } from './features/simulator/SimulatorPage';
 import { SavingsPage } from './features/savings/SavingsPage';
+import { HistoryPage } from './features/history/HistoryPage';
 
 function Layout() {
   return (
@@ -29,6 +30,7 @@ export const router = createBrowserRouter([
       { path: '/simulador', element: <SimulatorPage /> },
       { path: '/ahorros', element: <SavingsPage /> },
       { path: '/ajustes', element: <SettingsPage /> },
+      { path: '/historial', element: <HistoryPage /> },
       { path: '*', element: <Navigate to="/" replace /> },
     ],
   },
